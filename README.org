@@ -1,0 +1,4 @@
+A simple TUI application for netrunning in cyberpunk 2020. Development still in early stages.
+
+* Building
+build with gcc with the ncurses library =-lncurses=
