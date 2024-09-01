@@ -2,11 +2,17 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <locale.h>
+#include <string.h>
 
 typedef struct {
   int y;
   int x;
 } Point;
+
+typedef struct {
+  char *code;
+  char *label;
+} Netcode;
 
 typedef struct {
   int curr_row;
@@ -21,7 +27,18 @@ Point center_grid(size_t height, size_t width) {
   unsigned y = getmaxy(stdscr);
   Point center = {(y / 2) - height, (x / 2) - width * 2};
   return center;
-};
+}
+
+Point center_horizontal(WINDOW *win, char * string, unsigned height) {
+  Point c;
+  unsigned content_width = strlen(string);
+  getmaxyx(win, c.y, c.x);
+  c.x = c.x / 2 - content_width / 2;
+  c.y = height;
+  mvwprintw(win, c.y, c.x, "%s", string);
+  wrefresh(win);
+  return c;
+}
 
 void print_cursor_position() {
   int row;
@@ -116,11 +133,49 @@ Position *move_cur(Position *pos, size_t row, size_t col) {
   return pos;
 }
 
+Netcode net_menu(WINDOW *win, Netcode netcodes[], size_t menu_len) {
+  unsigned highlight = 0;
+  int choice;
+  while (1) {
+    for (size_t i = 0; i < menu_len; i++) {
+      if (i == highlight) {
+        wattron(win, A_REVERSE);
+        mvwprintw(win, i + 5, 2, "%s %s", netcodes[i].code, netcodes[i].label);
+        wattroff(win, A_REVERSE);
+      } else {
+        mvwprintw(win, i + 5, 2, "%s %s", netcodes[i].code, netcodes[i].label);
+      }
+    }
+    wrefresh(win);
+    choice = getch();
+
+    switch (choice) {
+    case KEY_UP:
+      if (highlight > 0) {
+        highlight--;
+      }
+      break;
+    case KEY_DOWN:
+      if (highlight < menu_len - 1) {
+        highlight++;
+      }
+      break;
+    case '\n':
+      for (size_t i = 0; i < menu_len ; i++) {
+        mvwprintw(win, i + 5, 2, "%s %s", netcodes[i].code, netcodes[i].label);
+      }
+      wrefresh(win);
+      return netcodes[highlight];
+      break;
+    }
+  }
+}
+
 int main() {
   setlocale(LC_ALL, "");
   initscr();
   noecho();
-  size_t width = 20;
+  size_t width = 30;
   size_t height = 20;
   Position *position =
     (Position *)malloc((sizeof(int) * 2) + (sizeof(size_t) * 2) +
@@ -136,6 +191,27 @@ int main() {
   size_t first_col = center.x;
   size_t last_row = (height - 1) * 2 + first_row;
   size_t last_col = (width - 1) * 4 + first_col;
+
+
+  WINDOW *menu = newwin(getmaxy(stdscr), 20, 0, 0);
+  refresh();
+  box(menu, 0, 0);
+  wrefresh(menu);
+  center_horizontal(menu, "NET CODES", 2);
+  center_horizontal(menu, "-----------", 3);
+
+  Netcode netcodes[] = {
+    {"\u20ac", "foo"},
+    {"\u0040", "bar"},
+    {"\u00a5", "baz"}};
+
+  int net_menu_len = *(&netcodes + 1) - netcodes;
+
+  for (int i = 0; i < net_menu_len ; i++) {
+    mvwprintw(menu, i + 5, 2, "%s %s", netcodes[i].code, netcodes[i].label);
+  }
+
+  wrefresh(menu);
 
   size_t i = 0;
   for (size_t row = first_row; row <= last_row; row += 2) {
@@ -201,7 +277,13 @@ int main() {
                             position->curr_col + 1);
       }
       break;
-        };
+    case '\n':
+      curs_set(0);
+      net_menu(menu, netcodes, net_menu_len);
+      curs_set(1);
+      move_cur(position, position->curr_row, position->curr_col);
+      break;
+    };
 
         if (choice == 'q') {
           break;
