@@ -9,6 +9,13 @@ typedef struct {
   int x;
 } Point;
 
+typedef enum  {
+  ADD,
+  GRID,
+  SELECT,
+  EXIT
+} Menu_state;
+
 typedef struct {
   char *code;
   char *label;
@@ -133,7 +140,7 @@ Position *move_cur(Position *pos, size_t row, size_t col) {
   return pos;
 }
 
-Netcode net_menu(WINDOW *win, Netcode netcodes[], size_t menu_len) {
+Menu_state net_menu(Position *pos, WINDOW *win, Netcode netcodes[], size_t menu_len) {
   unsigned highlight = 0;
   int choice;
   while (1) {
@@ -148,7 +155,7 @@ Netcode net_menu(WINDOW *win, Netcode netcodes[], size_t menu_len) {
     }
     wrefresh(win);
     choice = getch();
-
+    
     switch (choice) {
     case KEY_UP:
       if (highlight > 0) {
@@ -165,7 +172,59 @@ Netcode net_menu(WINDOW *win, Netcode netcodes[], size_t menu_len) {
         mvwprintw(win, i + 5, 2, "%s %s", netcodes[i].code, netcodes[i].label);
       }
       wrefresh(win);
-      return netcodes[highlight];
+      print_char(pos, netcodes[highlight].code,
+               pos->curr_row, pos->curr_col);
+      return (Menu_state) GRID;
+      break;
+    case 'q':
+      for (size_t i = 0; i < menu_len ; i++) {
+        mvwprintw(win, i + 5, 2, "%s %s", netcodes[i].code, netcodes[i].label);
+      }
+      wrefresh(win);
+      return (Menu_state) GRID;
+    case '+':
+      return (Menu_state) ADD;
+    }
+  }
+}
+
+Menu_state grid_movement(Position *pos) {
+  int choice;
+  while (1) {
+    choice = getch();
+    switch (choice) {
+    case KEY_UP:
+      if (pos->curr_row > 1) {
+        pos = move_cur(pos, pos->curr_row - 1,
+                            pos->curr_col);
+      }
+      break;
+    case KEY_LEFT:
+      if (pos->curr_col > 1) {
+        pos= move_cur(pos, pos->curr_row,
+                            pos->curr_col - 1);
+      }
+      break;
+    case KEY_DOWN:
+      if (pos->curr_row < (int)pos->height) {
+        pos= move_cur(pos, pos->curr_row + 1,
+                            pos->curr_col);
+      }
+      break;
+    case KEY_RIGHT:
+      if (pos->curr_col < (int)pos->width) {
+        pos= move_cur(pos, pos->curr_row,
+                            pos->curr_col + 1);
+      }
+      break;
+    case '\n':
+      move_cur(pos, pos->curr_row, pos->curr_col);
+      return (Menu_state) SELECT;
+      break;
+    };
+
+    if (choice == 'q') {
+      return (Menu_state) EXIT;
       break;
     }
   }
@@ -175,6 +234,7 @@ int main() {
   setlocale(LC_ALL, "");
   initscr();
   noecho();
+  start_color();
   size_t width = 30;
   size_t height = 20;
   Position *position =
@@ -192,7 +252,6 @@ int main() {
   size_t last_row = (height - 1) * 2 + first_row;
   size_t last_col = (width - 1) * 4 + first_col;
 
-
   WINDOW *menu = newwin(getmaxy(stdscr), 20, 0, 0);
   refresh();
   box(menu, 0, 0);
@@ -200,18 +259,19 @@ int main() {
   center_horizontal(menu, "NET CODES", 2);
   center_horizontal(menu, "-----------", 3);
 
-  Netcode netcodes[] = {
+  Netcode netcodes[21] = {
     {"\u20ac", "foo"},
     {"\u0040", "bar"},
     {"\u00a5", "baz"}};
 
-  int net_menu_len = *(&netcodes + 1) - netcodes;
+  size_t net_menu_len = 3;
 
-  for (int i = 0; i < net_menu_len ; i++) {
+  for (size_t i = 0; i < net_menu_len; i++) {
     mvwprintw(menu, i + 5, 2, "%s %s", netcodes[i].code, netcodes[i].label);
   }
 
   wrefresh(menu);
+  curs_set(2);
 
   size_t i = 0;
   for (size_t row = first_row; row <= last_row; row += 2) {
@@ -243,56 +303,31 @@ int main() {
     }
   }
 
-  print_char(position, "\u20ac", 4, 4);
-  print_char(position, "\u0040", 6, 8);
-  print_char(position, "\u00A5", 3, 11);
-
-  int choice;
   position = move_cur(position, 1, 1);
   keypad(stdscr, true);
+  Menu_state menu_state = GRID;
   while (1) {
-    choice = getch();
-    switch (choice) {
-    case KEY_UP:
-      if (position->curr_row > 1) {
-        position = move_cur(position, position->curr_row - 1,
-                            position->curr_col);
-      }
+    switch (menu_state) {
+    case GRID:
+      menu_state = grid_movement(position);
       break;
-    case KEY_LEFT:
-      if (position->curr_col > 1) {
-        position = move_cur(position, position->curr_row,
-                            position->curr_col - 1);
-      }
+    case ADD:
       break;
-    case KEY_DOWN:
-      if (position->curr_row < (int)position->height) {
-        position = move_cur(position, position->curr_row + 1,
-                            position->curr_col);
-      }
-      break;
-    case KEY_RIGHT:
-      if (position->curr_col < (int)position->width) {
-        position = move_cur(position, position->curr_row,
-                            position->curr_col + 1);
-      }
-      break;
-    case '\n':
+    case SELECT:
       curs_set(0);
-      net_menu(menu, netcodes, net_menu_len);
+      menu_state = net_menu(position, menu, netcodes, net_menu_len);
       curs_set(1);
       move_cur(position, position->curr_row, position->curr_col);
       break;
-    };
-
-        if (choice == 'q') {
-          break;
-        }
+    case EXIT:
+      free(position);
+      endwin();
+      return 0;
+    }
   }
 
   free(position);
   endwin();
-
 
   return 0;
 }
