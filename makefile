@@ -1,7 +1,7 @@
 CC=gcc
 BINARY=netrunner
 CFILES=main.c
-OBJECTS=main.o
+OBJECTS=main.o move.o box.o wall.o menu.c
 LIB=-lncurses
 CFLAGS= -Wall -Wextra
 
