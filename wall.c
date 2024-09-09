@@ -1,85 +1,77 @@
 #include "netrunner.h"
+#include <curses.h>
 
-Proximal_states get_proximal_states(Position *pos, Grid_state *grid_state) {
+Proximal_states get_proximal_states(Position *pos, unsigned row, unsigned col, Grid_state *grid_state) {
   Grid_state left;
   Grid_state right;
   Grid_state up;
   Grid_state down;
-  Grid_state center = grid_state[(pos->curr_row - 1) * pos->width + (pos->curr_col - 1)];
+  Grid_state center = grid_state[(row - 1) * pos->width + (col - 1)];
 
-  if (pos->curr_col > 1) {
-    left = grid_state[(pos->curr_row - 1) * pos->width + (pos->curr_col - 2)];
+  if (col > 1) {
+    left = grid_state[(row - 1) * pos->width + (col - 2)];
   } else {
-    left = (Grid_state){E, false};
+    left = (Grid_state){E, false, false, "", ""};
   }
 
-  if (pos->curr_col < pos->width) {
-    right = grid_state[(pos->curr_row - 1) * pos->width + (pos->curr_col)];
+  if (col < pos->width) {
+    right = grid_state[(row - 1) * pos->width + (col)];
   } else {
-    right = (Grid_state){E, false};
+    right = (Grid_state){E, false, false, "", ""};
   }
 
-  if (pos->curr_row > 1) {
-    up = grid_state[(pos->curr_row - 2) * pos->width + (pos->curr_col - 1)];
+  if (row > 1) {
+    up = grid_state[(row - 2) * pos->width + (col - 1)];
   } else {
-    up = (Grid_state){E, false};
+    up = (Grid_state){E, false, false, "", ""};
   }
 
-  if (pos->curr_row < pos->height) {
-    down = grid_state[(pos->curr_row) * pos->width + (pos->curr_col - 1)];
+  if (row < pos->height) {
+    down = grid_state[(row) * pos->width + (col - 1)];
   } else {
-    down = (Grid_state){E, false};
+    down = (Grid_state){E, false, false, "", ""};
   }
 
   return (Proximal_states) {
     left, right, up, down, center};
 }
 
-void create_wall(Position *pos, Proximal_states p_states, WINDOW *win) {
-    for (int col = 1; col < GRID_WIDTH - 1; col++) {
+void create_wall(Position *pos, WINDOW* win, Proximal_states p_states) {
+    for (int c = 1; c < GRID_WIDTH - 1; c++) {
       if (p_states.up.is_wall == true) {
-        mvwaddstr(get_pos(pos, pos->curr_row,
-                          pos->curr_col), 0, col, "\u2588");
+        mvwaddstr(win, 0, c, "\u2588");
       } else {
-        mvwaddstr(get_pos(pos, pos->curr_row,
-                          pos->curr_col), 0, col, "\u2584");
+        mvwaddstr(win, 0, c, "\u2584");
       }
 
       if (p_states.down.is_wall == true) {
-        mvwaddstr(get_pos(pos, pos->curr_row,
-                          pos->curr_col), 2, col, "\u2588");
+        mvwaddstr(win, 2, c, "\u2588");
       } else {
-        mvwaddstr(get_pos(pos, pos->curr_row,
-                          pos->curr_col), 2, col, "\u2580");
+        mvwaddstr(win, 2, c, "\u2580");
       }
     }
 
     if (p_states.left.is_wall == true) {
-      mvwaddstr(get_pos(pos, pos->curr_row,
-                        pos->curr_col), 1, 0, "\u2588");
+      mvwaddstr(win, 1, 0, "\u2588");
     } else {
-      mvwaddstr(get_pos(pos, pos->curr_row,
-                        pos->curr_col), 1, 0, "\u2590");
+      mvwaddstr(win, 1, 0, "\u2590");
     }
 
     if (p_states.right.is_wall == true) {
-      mvwaddstr(get_pos(pos, pos->curr_row,
-                        pos->curr_col), 1, 4, "\u2588");
+      mvwaddstr(win, 1, 4, "\u2588");
     } else {
-      mvwaddstr(get_pos(pos, pos->curr_row,
-                        pos->curr_col), 1, 4, "\u258C");
+      mvwaddstr(win, 1, 4, "\u258C");
     }
 
-    for (int col = 1; col < GRID_WIDTH - 1; col++) {
-      mvwaddstr(get_pos(pos, pos->curr_row,
-                        pos->curr_col), 1, col, "\u2588");
+    for (int c = 1; c < GRID_WIDTH - 1; c++) {
+      mvwaddstr(win, 1, c, "\u2588");
     }
 
     move_cur(pos, pos->curr_row, pos->curr_col);
-    wrefresh(win);
 }
 
 void clear_wall(Position *pos, Proximal_states p_states, Grid_state *grid_state) {
+  curs_set(0);
   WINDOW * win = get_pos(pos, pos->curr_row, pos->curr_col);
   wclear(win);
   Grid_pos grid_pos = p_states.center.grid_pos;
@@ -144,49 +136,42 @@ void clear_wall(Position *pos, Proximal_states p_states, Grid_state *grid_state)
   print_char(win, 1, 4, "\u2502");
 
   Proximal_states rebuild_prox_states;
-
   if (p_states.up.is_wall == true) {
     move_cur(pos, pos->curr_row - 1, pos->curr_col);
-    rebuild_prox_states = get_proximal_states(pos, grid_state);
-    create_wall(pos, rebuild_prox_states,
-                get_pos(pos, pos->curr_row, pos->curr_row));
+    rebuild_prox_states = get_proximal_states(pos, pos->curr_row, pos->curr_col, grid_state);
+    create_wall(pos, win, rebuild_prox_states);
     move_cur(pos, pos->curr_row + 1, pos->curr_col);
   }
 
   if (p_states.down.is_wall == true) {
     move_cur(pos, pos->curr_row + 1, pos->curr_col);
-    rebuild_prox_states = get_proximal_states(pos, grid_state);
-    create_wall(pos, rebuild_prox_states,
-                get_pos(pos, pos->curr_row, pos->curr_row));
+    rebuild_prox_states = get_proximal_states(pos, pos->curr_row, pos->curr_col, grid_state);
+    create_wall(pos, win, rebuild_prox_states);
     move_cur(pos, pos->curr_row - 1, pos->curr_col);
   }
 
   if (p_states.left.is_wall == true) {
     move_cur(pos, pos->curr_row, pos->curr_col - 1);
-    rebuild_prox_states = get_proximal_states(pos, grid_state);
-    create_wall(pos, rebuild_prox_states,
-                get_pos(pos, pos->curr_row, pos->curr_row));
+    rebuild_prox_states = get_proximal_states(pos, pos->curr_row, pos->curr_col, grid_state);
+    create_wall(pos, win, rebuild_prox_states);
     move_cur(pos, pos->curr_row, pos->curr_col + 1);
   }
 
   if (p_states.right.is_wall == true) {
     move_cur(pos, pos->curr_row, pos->curr_col + 1);
-    rebuild_prox_states = get_proximal_states(pos, grid_state);
-    create_wall(pos, rebuild_prox_states,
-                get_pos(pos, pos->curr_row, pos->curr_row));
+    rebuild_prox_states = get_proximal_states(pos, pos->curr_row, pos->curr_col, grid_state);
+    create_wall(pos, win, rebuild_prox_states);
     move_cur(pos, pos->curr_row, pos->curr_col - 1);
   }
 
-
+  curs_set(1);
   move_cur(pos, pos->curr_row, pos->curr_col);
-
-  wrefresh(win);
 }
 
 Menu_state create_wall_mode(Position *pos, Grid_state *grid_state) {
   int choice = '\n';
   while (1) {
-  Proximal_states p_states = get_proximal_states(pos, grid_state);
+    Proximal_states p_states = get_proximal_states(pos, pos->curr_row, pos->curr_col, grid_state);
 
     switch (choice) {
     case KEY_UP:
@@ -222,8 +207,7 @@ Menu_state create_wall_mode(Position *pos, Grid_state *grid_state) {
       } else {
         grid_state[(pos->curr_row - 1) * pos->width +
                    (pos->curr_col - 1)].is_wall = true;
-        create_wall(pos, p_states,
-                    get_pos(pos, pos->curr_row, pos->curr_col));
+        create_wall(pos, get_pos(pos, pos->curr_row, pos->curr_col), p_states);
       }
       break;
     case 'q':

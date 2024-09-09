@@ -1,9 +1,9 @@
 CC=gcc
 BINARY=netrunner
 CFILES=main.c
-OBJECTS=main.o move.o box.o wall.o menu.c
+OBJECTS=main.o move.o box.o wall.o menu.o save.o
 LIB=-lncurses
-CFLAGS= -Wall -Wextra
+CFLAGS= -Wall -Wextra -g
 
 all: $(BINARY)
 

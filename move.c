@@ -1,5 +1,12 @@
 #include "netrunner.h"
+#include <stdio.h>
 #include <string.h>
+
+void clear_symbol(Grid_state *grid_state, Position *pos) {
+  print_center_char(pos, " ", pos->curr_row, pos->curr_col);
+  update_grid_code(grid_state, pos, pos->curr_row,
+                   pos->curr_col, "3", false);
+}
 
 Point center_grid(size_t height, size_t width) {
   unsigned x = getmaxx(stdscr);
@@ -24,15 +31,21 @@ WINDOW *get_pos(Position *pos, size_t row, size_t col) {
   return win;
 }
 
-WINDOW *print_center_char(Position *pos, char* ch, size_t row, size_t col) {
+WINDOW *print_center_char(Position *pos, char* code, size_t row, size_t col) {
   WINDOW *win = get_pos(pos, row, col);
-  mvwprintw(win, 1, 2, "%s", ch);
+  mvwprintw(win, 1, 2, "%s", code);
   wrefresh(win);
   return win;
 }
 
-void print_char(WINDOW *win, unsigned row, unsigned col, char* ch) {
-  mvwprintw(win, row, col, "%s", ch);
+void update_grid_code(Grid_state *grid_state, Position *pos,
+                      unsigned row, unsigned col, char* code, bool status) {
+  strcpy(grid_state[(row - 1 ) * pos->width + (col - 1)].code, code);
+  grid_state[(row - 1 ) * pos->width + (col - 1)].is_symbol = status;
+}
+
+void print_char(WINDOW *win, unsigned row, unsigned col, char* code) {
+  mvwprintw(win, row, col, "%s", code);
   wrefresh(win);
 }
 
@@ -76,13 +89,15 @@ Menu_state grid_movement(Position *pos) {
       break;
     case '\n':
       move_cur(pos, pos->curr_row, pos->curr_col);
-      return (Menu_state) SELECT;
-      break;
-    };
-
-    if (choice == 'q') {
+      return (Menu_state)SELECT;
+    case 's':
+      return (Menu_state) SAVE;
+    case 'l':
+      return (Menu_state) LOAD;
+    case 'q':
       return (Menu_state) EXIT;
-      break;
-    }
+    case 'r':
+      return (Menu_state) REMOVE;
+    };
   }
 }
