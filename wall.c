@@ -139,28 +139,28 @@ void clear_wall(Position *pos, Proximal_states p_states, Grid_state *grid_state)
   if (p_states.up.is_wall == true) {
     move_cur(pos, pos->curr_row - 1, pos->curr_col);
     rebuild_prox_states = get_proximal_states(pos, pos->curr_row, pos->curr_col, grid_state);
-    create_wall(pos, win, rebuild_prox_states);
+    create_wall(pos, get_pos(pos, pos->curr_row, pos->curr_col), rebuild_prox_states);
     move_cur(pos, pos->curr_row + 1, pos->curr_col);
   }
 
   if (p_states.down.is_wall == true) {
     move_cur(pos, pos->curr_row + 1, pos->curr_col);
     rebuild_prox_states = get_proximal_states(pos, pos->curr_row, pos->curr_col, grid_state);
-    create_wall(pos, win, rebuild_prox_states);
+    create_wall(pos, get_pos(pos, pos->curr_row, pos->curr_col), rebuild_prox_states);
     move_cur(pos, pos->curr_row - 1, pos->curr_col);
   }
 
   if (p_states.left.is_wall == true) {
     move_cur(pos, pos->curr_row, pos->curr_col - 1);
     rebuild_prox_states = get_proximal_states(pos, pos->curr_row, pos->curr_col, grid_state);
-    create_wall(pos, win, rebuild_prox_states);
+    create_wall(pos, get_pos(pos, pos->curr_row, pos->curr_col), rebuild_prox_states);
     move_cur(pos, pos->curr_row, pos->curr_col + 1);
   }
 
   if (p_states.right.is_wall == true) {
     move_cur(pos, pos->curr_row, pos->curr_col + 1);
     rebuild_prox_states = get_proximal_states(pos, pos->curr_row, pos->curr_col, grid_state);
-    create_wall(pos, win, rebuild_prox_states);
+    create_wall(pos, get_pos(pos, pos->curr_row, pos->curr_col), rebuild_prox_states);
     move_cur(pos, pos->curr_row, pos->curr_col - 1);
   }
 
